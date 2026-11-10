@@ -1,12 +1,32 @@
 from typing import List, Union
 import json
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
+
+# Automatically locate and load backend/.env or root .env
+_CONFIG_DIR = Path(__file__).resolve().parent
+_BACKEND_DIR = _CONFIG_DIR.parent.parent
+_ROOT_DIR = _BACKEND_DIR.parent
+
+_possible_env_paths = [
+    _BACKEND_DIR / ".env",
+    _ROOT_DIR / ".env",
+    _ROOT_DIR / "backend" / ".env",
+    Path.cwd() / "backend" / ".env",
+    Path.cwd() / ".env",
+]
+
+for _env_path in _possible_env_paths:
+    if _env_path.is_file():
+        load_dotenv(dotenv_path=_env_path, override=False)
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[str(p) for p in _possible_env_paths if p.is_file()] or ".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )
@@ -17,7 +37,7 @@ class Settings(BaseSettings):
 
     # LLM Settings
     LLM_PROVIDER: str = Field(default="gemini", description="LLM provider: gemini or mock")
-    GEMINI_MODEL: str = Field(default="gemini-1.5-flash", description="Gemini model name")
+    GEMINI_MODEL: str = Field(default="gemini-3.5-flash-lite", description="Gemini model name")
     MAX_AGENT_ITERATIONS: int = Field(default=10, description="Max agent reasoning/execution loop iterations")
 
     # Database

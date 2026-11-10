@@ -73,11 +73,17 @@ def search_web(query: str, max_results: int = 5) -> Dict[str, Any]:
                 "sources": sources
             }
         except Exception as e:
+            # Sanitize error message to ensure no API key or token is leaked
+            raw_err = str(e)
+            clean_err = re.sub(r"tvly-[a-zA-Z0-9_\-]+", "tvly-dev-***MASKED***", raw_err)
+            clean_err = re.sub(r"(key|token|api_key)=[a-zA-Z0-9_\-]+", r"\1=***MASKED***", clean_err)
             return {
                 "success": False,
                 "provider": "tavily",
-                "error": f"Tavily search API error: {str(e)}. Please check your TAVILY_API_KEY.",
-                "results": []
+                "error": f"Tavily search API error: {clean_err}. Please check your TAVILY_API_KEY.",
+                "query": query,
+                "results": [],
+                "sources": []
             }
 
     # Fallback when TAVILY_API_KEY is not configured

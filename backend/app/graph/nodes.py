@@ -290,12 +290,23 @@ async def tool_execution_node(state: AgentWorkflowState) -> Dict[str, Any]:
                 tool_output = get_task_data(task_id=task_id, key=key)
 
             elif tool_name == "report_generator":
-                title = args.get("title", f"Report: {state.get('objective', '')[:50]}")
+                title = args.get("title")
                 content = args.get("content_markdown", "")
                 sources = args.get("sources") or state.get("sources", [])
+                
+                # If report markdown wasn't fully generated in tool arguments, synthesize directly via Gemini
+                if not content or len(content.strip()) < 100:
+                    report_result = await llm_service.generate_final_report_content(
+                        objective=state.get("objective", ""),
+                        observations=state.get("observations", []),
+                        sources=sources
+                    )
+                    title = title or report_result.get("title", f"Report: {state.get('objective', '')[:50]}")
+                    content = report_result.get("content_markdown", "")
+
                 tool_output = generate_report(
                     task_id=task_id,
-                    title=title,
+                    title=title or f"Report: {state.get('objective', '')[:50]}",
                     content_markdown=content,
                     sources=sources
                 )
@@ -389,7 +400,8 @@ async def tool_execution_node(state: AgentWorkflowState) -> Dict[str, Any]:
         "sources": all_sources,
         "active_tool_call": None,
         "approval_status": None,  # Reset approval status for next steps
-        "pending_approval": None
+        "pending_approval": None,
+        "report_id": state.get("report_id")
     }
 
 
